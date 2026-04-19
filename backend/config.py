@@ -1,12 +1,5 @@
-"""Configuration - giữ nguyên từ main.py"""
-import os
-from dotenv import load_dotenv
+"""Compatibility wrapper for new config layer."""
 
-load_dotenv()
+from backend.configs import DB_PATH, active_tokens
 
-# Database path. Can be overridden with the environment variable DB_PATH.
-# Default kept for local development to preserve existing behavior.
-DB_PATH = os.getenv("DB_PATH", "chatbot_database.db")
-
-# Token storage (in-memory)
-active_tokens = {}
+__all__ = ["DB_PATH", "active_tokens"]

@@ -1,6 +1,4 @@
-"""Compatibility wrapper for new model layer."""
-
-from backend.model import (
+from .entities import (
     ConversationModel,
     MessageModel,
     PlatformModel,

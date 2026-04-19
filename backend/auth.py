@@ -1,5 +1,4 @@
-"""Auth helpers - giữ nguyên từ main.py"""
-import hashlib
+"""Auth helpers."""
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict
@@ -14,18 +13,14 @@ except ImportError:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-from .database import get_db
-from .config import active_tokens
+from .configs import active_tokens
+from .helpers import hash_password, verify_password
+from .repositories.user_repository import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+user_repository = UserRepository()
 
-def hash_password(password: str) -> str:
-    """Hash password using SHA256"""
-    return hashlib.sha256(password.encode()).hexdigest()
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password"""
-    return hash_password(plain_password) == hashed_password
 
 def create_access_token(user_id: str) -> str:
     """Create simple access token"""
@@ -55,23 +50,35 @@ def verify_token(token: str) -> Optional[str]:
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict:
     """Get current user from token"""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    user_id = verify_token(token)
-    if not user_id:
-        raise credentials_exception
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    user = cursor.fetchone()
-    conn.close()
-    
-    if user is None:
-        raise credentials_exception
-    
-    return dict(user)
+    logger.info("[auth.py][get_current_user] Start business=resolve current user from token")
+    try:
+        credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+        user_id = verify_token(token)
+        if not user_id:
+            logger.error("[auth.py][get_current_user] End status=error reason=invalid_token")
+            raise credentials_exception
+
+        user = user_repository.find_by_id(user_id)
+        if user is None:
+            logger.error("[auth.py][get_current_user] End status=error reason=user_not_found user_id=%s", user_id)
+            raise credentials_exception
+
+        logger.info("[auth.py][get_current_user] End status=success user_id=%s", user.id)
+        return {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "full_name": user.full_name,
+            "is_admin": user.is_admin,
+            "created_at": user.created_at,
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("[auth.py][get_current_user] End status=error")
+        raise

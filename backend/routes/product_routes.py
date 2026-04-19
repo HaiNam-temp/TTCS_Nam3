@@ -10,7 +10,6 @@ helper and `Product` Pydantic model for responses.
 """
 from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
-import json
 
 try:
     from logger_config import get_logger
@@ -20,102 +19,42 @@ except ImportError:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-from ..database import get_db
-from ..models import Product
+from ..schemas import ProductDTO
+from ..services.container import product_service
 
 router = APIRouter(prefix="/products")
 
 
-@router.get("/", response_model=List[Product])
+@router.get("/", response_model=List[ProductDTO])
 async def list_products(q: Optional[str] = Query(None), limit: int = 50, offset: int = 0):
     """List products stored in the database.
 
     Optional query `q` performs a simple LIKE search against name and url.
     """
-    conn = get_db()
-    cursor = conn.cursor()
+    logger.info("[product_routes.py][list_products] Start route call")
     try:
-        if q:
-            like = f"%{q}%"
-            cursor.execute(
-                "SELECT * FROM products WHERE name LIKE ? OR url LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                (like, like, limit, offset)
-            )
-        else:
-            cursor.execute(
-                "SELECT * FROM products ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                (limit, offset)
-            )
-
-        rows = cursor.fetchall()
-        results = []
-        for r in rows:
-            # Safe column accessor (older DBs might lack some columns)
-            def safe_get(key):
-                try:
-                    return r[key]
-                except Exception:
-                    return None
-
-            # metadata is stored as JSON string in DB
-            metadata_val = safe_get("metadata")
-            metadata = None
-            try:
-                metadata = json.loads(metadata_val) if metadata_val else None
-            except Exception:
-                metadata = None
-
-            results.append(Product(
-                id=safe_get("id") or "",
-                name=safe_get("name") or "",
-                price=safe_get("price"),
-                url=safe_get("url") or "",
-                image=safe_get("image"),
-                rating=safe_get("rating"),
-                review_count=safe_get("review_count"),
-                metadata=metadata,
-                created_at=safe_get("created_at") or ""
-            ))
-
-        return results
-    finally:
-        conn.close()
+        result = product_service.list_products(q=q, limit=limit, offset=offset)
+        logger.info("[product_routes.py][list_products] End status=success count=%s", len(result))
+        return result
+    except HTTPException:
+        logger.error("[product_routes.py][list_products] End status=error type=http_exception")
+        raise
+    except Exception:
+        logger.exception("[product_routes.py][list_products] End status=error")
+        raise
 
 
-@router.get("/{product_id}", response_model=Product)
+@router.get("/{product_id}", response_model=ProductDTO)
 async def get_product(product_id: str):
     """Return a single product by ID."""
-    conn = get_db()
-    cursor = conn.cursor()
+    logger.info("[product_routes.py][get_product] Start route call product_id=%s", product_id)
     try:
-        cursor.execute("SELECT * FROM products WHERE id = ?", (product_id,))
-        r = cursor.fetchone()
-        if not r:
-            raise HTTPException(status_code=404, detail="Product not found")
-
-        def safe_get(key):
-            try:
-                return r[key]
-            except Exception:
-                return None
-
-        metadata_val = safe_get("metadata")
-        metadata = None
-        try:
-            metadata = json.loads(metadata_val) if metadata_val else None
-        except Exception:
-            metadata = None
-
-        return Product(
-            id=safe_get("id") or "",
-            name=safe_get("name") or "",
-            price=safe_get("price"),
-            url=safe_get("url") or "",
-            image=safe_get("image"),
-            rating=safe_get("rating"),
-            review_count=safe_get("review_count"),
-            metadata=metadata,
-            created_at=safe_get("created_at") or ""
-        )
-    finally:
-        conn.close()
+        result = product_service.get_product(product_id)
+        logger.info("[product_routes.py][get_product] End status=success product_id=%s", product_id)
+        return result
+    except HTTPException:
+        logger.error("[product_routes.py][get_product] End status=error type=http_exception product_id=%s", product_id)
+        raise
+    except Exception:
+        logger.exception("[product_routes.py][get_product] End status=error product_id=%s", product_id)
+        raise
