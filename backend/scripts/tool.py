@@ -1,9 +1,9 @@
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate, PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_chroma import Chroma
-from langchain_openai.embeddings import OpenAIEmbeddings
-from langchain_classic.callbacks.base import BaseCallbackHandler
+try:
+    from langchain_core.callbacks.base import BaseCallbackHandler
+except Exception:
+    class BaseCallbackHandler:  # type: ignore[no-redef]
+        """Fallback callback base to keep module importable when LangChain deps are broken."""
+        pass
 
 from operator import itemgetter
 import json
@@ -26,6 +26,20 @@ _vector_db = None
 _embeddings = None
 _chat_model = None
 
+
+def _raise_langchain_import_error() -> None:
+    """Raise a descriptive error when LangChain dependencies are not importable."""
+    try:
+        from langchain_openai import ChatOpenAI as _  # noqa: F401
+        from langchain_chroma import Chroma as _  # noqa: F401
+        from langchain_openai.embeddings import OpenAIEmbeddings as _  # noqa: F401
+    except Exception as exc:
+        logger.exception("[tool.py][_raise_langchain_import_error] Failed importing LangChain dependencies")
+        raise RuntimeError(
+            "Khong the tai cac thu vien LangChain/OpenAI. "
+            "Hay cai dat dependency dung phien ban trong backend/requirements.txt"
+        ) from exc
+
 class StreamingCallbackHandler(BaseCallbackHandler):
     def on_llm_new_token(self, token: str, **kwargs):
         """In ra từng token khi model stream"""
@@ -34,6 +48,9 @@ class StreamingCallbackHandler(BaseCallbackHandler):
 def get_embeddings():
     global _embeddings
     if _embeddings is None:
+        _raise_langchain_import_error()
+        from langchain_openai.embeddings import OpenAIEmbeddings
+
         _embeddings = OpenAIEmbeddings(
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             model="text-embedding-ada-002"
@@ -43,6 +60,9 @@ def get_embeddings():
 def get_vector_db():
     global _vector_db
     if _vector_db is None:
+        _raise_langchain_import_error()
+        from langchain_chroma import Chroma
+
         embeddings = get_embeddings()
         _vector_db = Chroma(
             persist_directory=PRODUCTS_CHROMA_PATH,
@@ -53,6 +73,9 @@ def get_vector_db():
 def get_chat_model():
     global _chat_model
     if _chat_model is None:
+        _raise_langchain_import_error()
+        from langchain_openai import ChatOpenAI
+
         _chat_model = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=0,

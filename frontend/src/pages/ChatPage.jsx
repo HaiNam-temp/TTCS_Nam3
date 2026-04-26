@@ -66,15 +66,42 @@ export function ChatPage() {
       return;
     }
 
+    const userMessage = input.trim();
+    const tempIdBase = Date.now();
+    const optimisticUserMessage = {
+      id: `temp-user-${tempIdBase}`,
+      role: "user",
+      content: userMessage,
+    };
+    const loadingAssistantMessage = {
+      id: `temp-assistant-loading-${tempIdBase}`,
+      role: "assistant",
+      content: "Trợ lý AI đang xử lý...",
+      isLoading: true,
+    };
+
+    setMessages((prev) => [...prev, optimisticUserMessage, loadingAssistantMessage]);
+    setInput("");
     setLoading(true);
     try {
-      const response = await sendMessageApi(token, selectedConversationId, input.trim());
+      const response = await sendMessageApi(token, selectedConversationId, userMessage);
       const newMessages = await listMessagesApi(token, selectedConversationId);
       setMessages(newMessages || []);
-      setInput("");
       if (!response?.response) {
         throw new Error("Phản hồi rỗng");
       }
+    } catch (error) {
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === loadingAssistantMessage.id
+            ? {
+                ...message,
+                content: "Xin lỗi, không nhận được phản hồi từ trợ lý. Vui lòng thử lại.",
+                isLoading: false,
+              }
+            : message
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -113,9 +140,23 @@ export function ChatPage() {
         <section className="chat-panel">
           <div className="chat-messages">
             {messages.map((message) => (
-              <div key={message.id} className={message.role === "assistant" ? "bubble assistant" : "bubble user"}>
+              <div
+                key={message.id}
+                className={
+                  message.role === "assistant"
+                    ? `bubble assistant${message.isLoading ? " loading" : ""}`
+                    : "bubble user"
+                }
+              >
                 <strong>{message.role === "assistant" ? "Trợ lý AI" : "Bạn"}</strong>
-                <p>{message.content}</p>
+                {message.isLoading ? (
+                  <p className="loading-text">
+                    <span className="loading-icon" aria-hidden="true" />
+                    {message.content}
+                  </p>
+                ) : (
+                  <p>{message.content}</p>
+                )}
               </div>
             ))}
 

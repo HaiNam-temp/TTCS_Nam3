@@ -1,27 +1,96 @@
 from dotenv import load_dotenv
 from logger_config import get_logger
-from tool import (
-    product_search_chain,
-    price_comparison_chain,
-    get_vector_db,
-    get_chat_model
-)
-# Import multi-platform crawler thay cho Tiki only
-import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'Crawl_Data'))
-from Crawl_Data.run_all_crawlers import crawl_all_platforms
+import sys
+
+logger = get_logger(__name__)
+
+
+def _map_ai_error_to_user_message(error: Exception) -> str:
+    text = str(error or "").lower()
+    if "openai_api_key" in text or "api key" in text or "invalid_api_key" in text:
+        return "Khong the ket noi AI do API key khong hop le hoac chua duoc cau hinh."
+    if "insufficient_quota" in text or "quota" in text:
+        return "Tai khoan AI da het han muc (quota). Vui long nap them han muc hoac doi key khac."
+    if "rate limit" in text or "429" in text:
+        return "He thong AI dang qua tai (rate limit). Vui long thu lai sau it phut."
+    if "langchain" in text or "pydantic" in text or "module" in text or "import" in text:
+        return "He thong AI chua san sang do loi dependency. Vui long kiem tra moi truong backend."
+    return "Xin loi, da co loi xay ra khi xu ly yeu cau cua ban."
+
+try:
+    from backend.scripts.tool import (
+        product_search_chain,
+        price_comparison_chain,
+        get_vector_db,
+        get_chat_model,
+    )
+    _tool_import_error = None
+except ModuleNotFoundError:
+    # Fallback for direct execution contexts where only the project root is resolved.
+    backend_dir = os.path.join(os.path.dirname(__file__), "backend")
+    if backend_dir not in sys.path:
+        sys.path.append(backend_dir)
+    from scripts.tool import (
+        product_search_chain,
+        price_comparison_chain,
+        get_vector_db,
+        get_chat_model,
+    )
+    _tool_import_error = None
+except Exception as exc:
+    logger.exception(
+        "[chatbot.py] Failed importing AI toolchain: %s | python=%s",
+        str(exc),
+        sys.executable,
+    )
+    product_search_chain = None
+    price_comparison_chain = None
+    get_vector_db = None
+    get_chat_model = None
+    _tool_import_error = exc
+
+# Import multi-platform crawler from backend package with direct-run fallback.
+try:
+    from backend.Crawl_Data.run_all_crawlers import crawl_all_platforms
+except ModuleNotFoundError:
+    crawl_dir = os.path.join(os.path.dirname(__file__), "backend", "Crawl_Data")
+    if crawl_dir not in sys.path:
+        sys.path.append(crawl_dir)
+    from run_all_crawlers import crawl_all_platforms
 
 import json
 from datetime import datetime
-from langchain_core.documents import Document
 load_dotenv()
-logger = get_logger(__name__)
-products_vector_db = get_vector_db()
-chat_model = get_chat_model()
+products_vector_db = None
+chat_model = None
+Document = None
+
+try:
+    from langchain_core.documents import Document as _Document
+    Document = _Document
+except Exception as exc:
+    logger.exception("[chatbot.py] Failed importing Document from langchain_core: %s", str(exc))
+    if _tool_import_error is None:
+        _tool_import_error = exc
+
+if _tool_import_error is None:
+    try:
+        products_vector_db = get_vector_db()
+        chat_model = get_chat_model()
+    except Exception as exc:
+        logger.exception("[chatbot.py] Failed initializing AI runtime: %s", str(exc))
+        _tool_import_error = exc
+
 from backend.database import save_products
 def process_user_query(user_query: str) -> str:
     logger.info(f"User query: {user_query}")
+    if _tool_import_error is not None or chat_model is None:
+        logger.error(
+            "[chatbot.py][process_user_query] AI runtime unavailable error=%s",
+            str(_tool_import_error),
+        )
+        return _map_ai_error_to_user_message(_tool_import_error or RuntimeError("AI runtime unavailable"))
     try:
         intent_prompt = f"""
         Bạn là một trợ lý AI. Hãy phân loại câu sau thành một trong hai loại:
@@ -95,6 +164,8 @@ def process_user_query(user_query: str) -> str:
                 
                 # Add new products to vector database
                 try:
+                    if Document is None:
+                        raise RuntimeError("LangChain Document class is unavailable")
                     # Convert products to Document objects
                     documents = []
                     for product in all_products:
@@ -130,8 +201,8 @@ def process_user_query(user_query: str) -> str:
         return search_result
         
     except Exception as e:
-        logger.error(f"Error processing query: {str(e)}")
-        return "Xin lỗi, đã có lỗi xảy ra khi xử lý yêu cầu của bạn."
+        logger.exception("[chatbot.py][process_user_query] Error processing query: %s", str(e))
+        return _map_ai_error_to_user_message(e)
 
 def chat_loop():
     """Main chat loop"""

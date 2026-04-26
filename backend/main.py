@@ -6,6 +6,8 @@ from fastapi import FastAPI
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+from pathlib import Path
+import sys
 
 try:
     from logger_config import get_logger
@@ -39,9 +41,37 @@ app.add_middleware(
 )
 
 # Initialize database on startup
+def _log_runtime_diagnostics() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    expected_venv_python = project_root / ".venv" / "Scripts" / "python.exe"
+    current_python = Path(sys.executable).resolve()
+
+    logger.info("Runtime python=%s", current_python)
+    if expected_venv_python.exists() and current_python != expected_venv_python.resolve():
+        logger.warning(
+            "Backend is not running with workspace venv. expected=%s current=%s",
+            expected_venv_python,
+            current_python,
+        )
+
+    try:
+        import pydantic
+
+        version = getattr(pydantic, "__version__", "unknown")
+        logger.info("Runtime pydantic=%s", version)
+        if not str(version).startswith("2."):
+            logger.warning(
+                "Detected pydantic %s. LangChain in this project requires pydantic 2.x.",
+                version,
+            )
+    except Exception:
+        logger.exception("Unable to inspect pydantic runtime version")
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database on startup"""
+    _log_runtime_diagnostics()
     init_database()
     logger.info("FastAPI application started")
 

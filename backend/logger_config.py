@@ -20,4 +20,6 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
         )
         handler.setFormatter(fmt)
         logger.addHandler(handler)
+    # Avoid duplicate lines when root logger (e.g., uvicorn) also has handlers.
+    logger.propagate = False
     return logger
