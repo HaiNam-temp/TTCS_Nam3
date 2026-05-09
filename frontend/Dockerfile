@@ -2,12 +2,12 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Install dependencies
-COPY frontend/package*.json ./
+# Install dependencies (context is the `frontend/` folder)
+COPY package*.json ./
 RUN npm ci --silent
 
 # Copy source and build
-COPY frontend/ ./
+COPY . ./
 RUN npm run build
 
 FROM nginx:stable-alpine

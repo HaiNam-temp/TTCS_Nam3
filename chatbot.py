@@ -229,7 +229,7 @@ def chat_loop():
         try:
             user_input = input("\nBạn muốn tìm sản phẩm gì? ").strip()
             
-            # Skip empty input or input starting with &
+            # Skip empty input or input starting with & aa
             if not user_input or user_input.startswith('&'):
                 continue
             
