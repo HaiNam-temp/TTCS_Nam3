@@ -33,7 +33,7 @@ export function SearchPage() {
     <AppShell>
       <PageSectionHeader
         title="Tra cứu sản phẩm"
-        subtitle="Tìm theo tên hoặc đường dẫn sản phẩm đã lưu trong cơ sở dữ liệu."
+        subtitle="Tìm kiếm sản phẩm theo từ khóa"
       />
 
       <form className="inline-form" onSubmit={onSubmit}>

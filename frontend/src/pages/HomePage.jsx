@@ -33,29 +33,28 @@ export function HomePage() {
       <section className="hero">
         <h2>Chào mừng đến với PriceComp</h2>
         <p>
-          Nền tảng tổng hợp tìm kiếm sản phẩm, chatbot trợ lý và quản trị dữ liệu crawl trong một giao diện React thống nhất.
+          Tìm kiếm sản phẩm tốt với giá thấp nhất 
         </p>
       </section>
 
       <section className="card-grid">
         <Link to="/search" className="feature-card">
           <h3>Tìm sản phẩm</h3>
-          <p>Tra cứu nhanh dữ liệu sản phẩm đã lưu từ backend.</p>
+          <p>Tra cứu nhanh các sản phẩm theo từ khóa.</p>
         </Link>
         <Link to="/chat" className="feature-card">
           <h3>Trợ lý AI</h3>
-          <p>Hỏi đáp theo từng cuộc hội thoại và lưu lại lịch sử.</p>
+          <p>Trợ giúp bạn tìm kiếm và so sánh sản phẩm một cách thông minh.</p>
         </Link>
         <Link to="/admin" className="feature-card">
           <h3>Bảng điều khiển quản trị</h3>
-          <p>Theo dõi thống kê và chạy tác vụ crawl theo lô.</p>
         </Link>
       </section>
 
       <section className="panel panel-products">
         <PageSectionHeader
-          title="Sản phẩm mới trong cơ sở dữ liệu"
-          subtitle="Danh sách được lấy trực tiếp từ bảng products, sắp xếp theo thời gian tạo mới nhất."
+          title="Danh sách sản phẩm mới nhất"
+          subtitle="Danh sách các sản phẩm mới nhất với giá tốt"
           action={
             <Link className="btn btn-ghost" to="/search">
               Xem tất cả

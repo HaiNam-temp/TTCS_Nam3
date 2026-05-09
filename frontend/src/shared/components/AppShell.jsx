@@ -2,13 +2,13 @@ import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/AuthContext";
 
-const navItems = [
+const baseNavItems = [
   { to: "/", label: "Trang chủ" },
   { to: "/search", label: "Tìm kiếm" },
   { to: "/chat", label: "Trợ lý AI" },
-  { to: "/settings", label: "Cài đặt" },
-  { to: "/admin", label: "Quản trị" },
 ];
+
+const adminNavItem = { to: "/admin", label: "Quản trị" };
 
 export function AppShell({ children }) {
   const { user, logout } = useAuth();
@@ -18,6 +18,11 @@ export function AppShell({ children }) {
     logout();
     navigate("/login");
   }
+
+  // Build nav items. Show `Cài đặt` only for authenticated users.
+  const navItems = [...baseNavItems];
+  if (user) navItems.push({ to: "/settings", label: "Cài đặt" });
+  if (user?.is_admin) navItems.push(adminNavItem);
 
   return (
     <div className="app-layout">

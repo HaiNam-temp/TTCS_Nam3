@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { useAuth } from "../features/auth/AuthContext";
 import { ProtectedRoute } from "../shared/components/ProtectedRoute";
 import { AdminPage } from "../pages/AdminPage";
 import { ChatPage } from "../pages/ChatPage";
@@ -11,27 +10,11 @@ import { SearchPage } from "../pages/SearchPage";
 import { SettingsPage } from "../pages/SettingsPage";
 
 export function App() {
-  const { isAuthenticated } = useAuth();
-
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <HomePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/search"
-        element={
-          <ProtectedRoute>
-            <SearchPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/search" element={<SearchPage />} />
       <Route
         path="/chat"
         element={
@@ -57,7 +40,7 @@ export function App() {
         }
       />
       <Route path="/404" element={<NotFoundPage />} />
-      <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

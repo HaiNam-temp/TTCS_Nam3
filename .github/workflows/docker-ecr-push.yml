@@ -1,0 +1,129 @@
+name: Build and push Docker images to ECR
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend_group: ${{ steps.filter.outputs.backend_group }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'src/**'
+            backend_group:
+              - 'backend/**'
+              - 'Crawl_Data/**'
+              - 'chatbot.py'
+              - 'create_chain_with_template.py'
+              - 'create_vector_database.py'
+              - 'recommend_system/**'
+
+  build-and-push-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.SECRET_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set registry variables
+        id: vars
+        run: |
+          echo "REGISTRY=${{ secrets.FRONTEND_REGISTRY }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Ensure ECR repository exists
+        env:
+          REGISTRY: ${{ secrets.FRONTEND_REGISTRY }}
+        run: |
+          REPO_NAME=$(echo "$REGISTRY" | awk -F/ '{print $2}')
+          aws ecr describe-repositories --repository-names "$REPO_NAME" || aws ecr create-repository --repository-name "$REPO_NAME"
+
+      - name: Login to ECR
+        env:
+          REGISTRY: ${{ secrets.FRONTEND_REGISTRY }}
+        run: |
+          HOST=$(echo "$REGISTRY" | awk -F/ '{print $1}')
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $HOST
+
+      - name: Build and push frontend image
+        env:
+          REGISTRY: ${{ secrets.FRONTEND_REGISTRY }}
+          IMAGE_TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
+        run: |
+          docker build -f frontend/Dockerfile -t $REGISTRY:latest -t $REGISTRY:$IMAGE_TAG frontend/
+          docker push $REGISTRY:$IMAGE_TAG
+          docker push $REGISTRY:latest
+
+  build-and-push-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend_group == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.SECRET_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set registry variables
+        id: vars-backend
+        run: |
+          echo "REGISTRY=${{ secrets.BACKEND_REGISTRY }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Ensure ECR repository exists
+        env:
+          REGISTRY: ${{ secrets.BACKEND_REGISTRY }}
+        run: |
+          REPO_NAME=$(echo "$REGISTRY" | awk -F/ '{print $2}')
+          aws ecr describe-repositories --repository-names "$REPO_NAME" || aws ecr create-repository --repository-name "$REPO_NAME"
+
+      - name: Login to ECR
+        env:
+          REGISTRY: ${{ secrets.BACKEND_REGISTRY }}
+        run: |
+          HOST=$(echo "$REGISTRY" | awk -F/ '{print $1}')
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $HOST
+
+      - name: Build and push backend image
+        env:
+          REGISTRY: ${{ secrets.BACKEND_REGISTRY }}
+          IMAGE_TAG: ${{ steps.vars-backend.outputs.IMAGE_TAG }}
+        run: |
+          # Build from backend context (includes AI + Crawl as in repo)
+          docker build -f backend/Dockerfile -t $REGISTRY:latest -t $REGISTRY:$IMAGE_TAG backend/
+          docker push $REGISTRY:$IMAGE_TAG
+          docker push $REGISTRY:latest
+
+# Notes: This workflow expects the following repository secrets to be set:
+# - ACCESS_KEY: AWS access key id
+# - SECRET_KEY: AWS secret access key
+# - AWS_REGION: AWS region (e.g., us-east-1)
+# - FRONTEND_REGISTRY: full frontend ECR repo URI (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/frontend)
+# - BACKEND_REGISTRY: full backend ECR repo URI (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/backend)

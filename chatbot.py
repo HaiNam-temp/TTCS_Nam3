@@ -91,6 +91,16 @@ def process_user_query(user_query: str) -> str:
             str(_tool_import_error),
         )
         return _map_ai_error_to_user_message(_tool_import_error or RuntimeError("AI runtime unavailable"))
+    
+    # Check if search and comparison chains are available
+    if product_search_chain is None or price_comparison_chain is None:
+        logger.error(
+            "[chatbot.py][process_user_query] Product chains unavailable: search=%s comparison=%s",
+            product_search_chain is not None,
+            price_comparison_chain is not None,
+        )
+        return "Xin lỗi, hệ thống AI chưa sẵn sàng. Vui lòng kiểm tra cấu hình backend."
+    
     try:
         intent_prompt = f"""
         Bạn là một trợ lý AI. Hãy phân loại câu sau thành một trong hai loại:
@@ -117,7 +127,7 @@ def process_user_query(user_query: str) -> str:
         product_name = intent_result
         logger.info(f"Extracted product name: {product_name}")
 
-        # 🔍 Bước 3: Tìm sản phẩm
+        # Bước 3: Tìm sản phẩm
         # product_search_chain may be either a chain-like object with an
         # .invoke(...) method or a plain callable (fallback function). Handle
         # both cases to avoid AttributeError when a simple function was

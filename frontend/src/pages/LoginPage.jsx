@@ -64,8 +64,8 @@ export function LoginPage() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <h2>Cổng PriceComp</h2>
-        <p>Đăng nhập để dùng tìm kiếm, chat và quản trị dữ liệu sản phẩm.</p>
+        <h2>PriceComp</h2>
+        <p>Mua hàng thông minh, so sánh giá dễ dàng</p>
 
         <div className="auth-tabs">
           <button
