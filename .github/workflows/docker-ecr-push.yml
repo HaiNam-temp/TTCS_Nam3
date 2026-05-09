@@ -116,8 +116,8 @@ jobs:
           REGISTRY: ${{ secrets.BACKEND_REGISTRY }}
           IMAGE_TAG: ${{ steps.vars-backend.outputs.IMAGE_TAG }}
         run: |
-          # Build from backend context (includes AI + Crawl as in repo)
-          docker build -f backend/Dockerfile -t $REGISTRY:latest -t $REGISTRY:$IMAGE_TAG backend/
+          # Build from repository root so Dockerfile can reference paths like backend/requirements.txt
+          docker build -f backend/Dockerfile -t $REGISTRY:latest -t $REGISTRY:$IMAGE_TAG .
           docker push $REGISTRY:$IMAGE_TAG
           docker push $REGISTRY:latest
 
