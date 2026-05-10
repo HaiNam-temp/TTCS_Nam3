@@ -105,7 +105,7 @@ jobs:
 
       - name: Remote load images and run containers
         run: |
-          ssh -i private_key -o StrictHostKeyChecking=no ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }} bash -s << 'EOF'
+          ssh -i private_key -o StrictHostKeyChecking=no ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }} "DEPLOY_DIR='${{ env.DEPLOY_DIR }}' bash -s" << 'EOF'
           set -euo pipefail
           mkdir -p $DEPLOY_DIR
           cd $DEPLOY_DIR
