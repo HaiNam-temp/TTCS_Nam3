@@ -15,7 +15,7 @@ from logger_config import get_logger
 
 logger = get_logger(__name__)
 
-# Initialize ChatOpenAI (kept local to this module to avoid circular imports)
+# Initialize ChatOpenAI (kept local to this module to avoid circular imports) aaa
 chat_model = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0
