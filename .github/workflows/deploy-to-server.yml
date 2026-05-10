@@ -116,13 +116,16 @@ jobs:
           docker rm -f ttcs_backend || true
           docker rm -f ttcs_frontend || true
 
-          # Run backend with host networking so it can reach localhost DB
-          docker run -d --name ttcs_backend --restart unless-stopped --network host \
-            -e POSTGRES_HOST=localhost \
+          # Run backend publishing port 8010 and allowing container to reach host DB
+          docker run -d --name ttcs_backend --restart unless-stopped \
+            -p 8010:8010 \
+            --add-host=host.docker.internal:host-gateway \
+            -e POSTGRES_HOST=host.docker.internal \
             -e POSTGRES_PORT=5444 \
             -e POSTGRES_USER=postgres \
             -e POSTGRES_PASSWORD=postgres \
             -e POSTGRES_DB=crawldata \
+            -e OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}' \
             ttcs_backend:latest
 
           # Run frontend (nginx) using host networking so it can reach backend on localhost:8010
@@ -132,6 +135,29 @@ jobs:
           # Quick checks
           docker images | egrep "ttcs_backend|ttcs_frontend" || true
           docker ps --filter name=ttcs_ -a || true
+
+          # Create nginx site config for domain and copy into frontend container
+          cat > $DEPLOY_DIR/hnam.conf <<'NGINX'
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name hnam.io.vn www.hnam.io.vn;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+NGINX
+
+          if docker ps --format '{{.Names}}' | grep -q '^ttcs_frontend$'; then
+            docker cp $DEPLOY_DIR/hnam.conf ttcs_frontend:/etc/nginx/conf.d/hnam.conf || true
+            docker exec ttcs_frontend nginx -t || true
+            docker exec ttcs_frontend nginx -s reload || true
+          fi
           EOF
 
       - name: Cleanup local artifacts
