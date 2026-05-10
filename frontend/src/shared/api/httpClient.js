@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://price-comp-alb-2137356393.ap-southeast-2.elb.amazonaws.com";
+// Default to backend on the deployment server at port 8010 when not overridden
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://54.206.52.145:8010";
 const DEFAULT_TIMEOUT_MS = parseInt(import.meta.env.VITE_API_TIMEOUT_MS || "15000", 10); // 15s
 const DEFAULT_RETRIES = parseInt(import.meta.env.VITE_API_RETRIES || "3", 10);
 import loadingState from "./loadingState";

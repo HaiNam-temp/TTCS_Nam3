@@ -125,8 +125,9 @@ jobs:
             -e POSTGRES_DB=crawldata \
             ttcs_backend:latest
 
-          # Run frontend (nginx) mapping port 80
-          docker run -d --name ttcs_frontend --restart unless-stopped -p 80:80 ttcs_frontend:latest
+          # Run frontend (nginx) using host networking so it can reach backend on localhost:8010
+          docker rm -f ttcs_frontend || true
+          docker run -d --name ttcs_frontend --restart unless-stopped --network host ttcs_frontend:latest
 
           # Quick checks
           docker images | egrep "ttcs_backend|ttcs_frontend" || true
