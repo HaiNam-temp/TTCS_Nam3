@@ -64,25 +64,25 @@ jobs:
       - name: Create docker-compose for remote
         run: |
           cat > docker-compose.yml <<'EOC'
-version: '3.8'
-services:
-  backend:
-    image: ttcs_backend:latest
-    network_mode: "host"
-    restart: always
-    environment:
-      - POSTGRES_HOST=localhost
-      - POSTGRES_PORT=5444
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=crawldata
+          version: '3.8'
+          services:
+            backend:
+              image: ttcs_backend:latest
+              network_mode: "host"
+              restart: always
+              environment:
+                - POSTGRES_HOST=localhost
+                - POSTGRES_PORT=5444
+                - POSTGRES_USER=postgres
+                - POSTGRES_PASSWORD=postgres
+                - POSTGRES_DB=crawldata
 
-  frontend:
-    image: ttcs_frontend:latest
-    ports:
-      - "80:80"
-    restart: always
-        EOC
+            frontend:
+              image: ttcs_frontend:latest
+              ports:
+                - "80:80"
+              restart: always
+          EOC
 
       - name: Prepare SSH key
         run: |
