@@ -82,7 +82,7 @@ services:
     ports:
       - "80:80"
     restart: always
-EOC
+        EOC
 
       - name: Prepare SSH key
         run: |
