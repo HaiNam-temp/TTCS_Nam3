@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+import asyncio
 from pathlib import Path
 import sys
 
@@ -70,9 +71,14 @@ def _log_runtime_diagnostics() -> None:
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database on startup"""
+    """Initialize database on startup without blocking the event loop."""
     _log_runtime_diagnostics()
-    init_database()
+    try:
+        # Run the synchronous DB init in a thread to avoid blocking the event loop
+        await asyncio.to_thread(init_database)
+        logger.info("Database initialized on startup")
+    except Exception:
+        logger.exception("Database initialization failed during startup")
     logger.info("FastAPI application started")
 
 # Register routers
