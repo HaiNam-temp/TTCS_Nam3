@@ -30,7 +30,7 @@ try:
     )
     _tool_import_error = None
 except ModuleNotFoundError:
-    # Fallback for direct execution contexts where only the project root is resolved.
+    # Fallback for direct execution contexts where only the project root is resolved 99dsda.
     backend_dir = os.path.join(os.path.dirname(__file__), "backend")
     if backend_dir not in sys.path:
         sys.path.append(backend_dir)
