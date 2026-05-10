@@ -103,7 +103,7 @@ jobs:
           if [ -f backend.tar ]; then scp -i private_key -o StrictHostKeyChecking=no backend.tar ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/; fi
           scp -i private_key -o StrictHostKeyChecking=no docker-compose.yml ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/
 
-      - name: Remote load images and deploy
+      - name: Remote load images and run containers
         run: |
           ssh -i private_key -o StrictHostKeyChecking=no ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }} bash -s << 'EOF'
           set -euo pipefail
@@ -111,12 +111,26 @@ jobs:
           cd $DEPLOY_DIR
           if [ -f backend.tar ]; then docker load -i backend.tar || true; fi
           if [ -f frontend.tar ]; then docker load -i frontend.tar || true; fi
-          # Start services using docker compose (v2) or docker-compose
-          if command -v docker-compose >/dev/null 2>&1; then
-            docker-compose -f docker-compose.yml up -d --force-recreate
-          else
-            docker compose -f docker-compose.yml up -d --force-recreate
-          fi
+
+          # Stop and remove existing containers (if any)
+          docker rm -f ttcs_backend || true
+          docker rm -f ttcs_frontend || true
+
+          # Run backend with host networking so it can reach localhost DB
+          docker run -d --name ttcs_backend --restart unless-stopped --network host \
+            -e POSTGRES_HOST=localhost \
+            -e POSTGRES_PORT=5444 \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=crawldata \
+            ttcs_backend:latest
+
+          # Run frontend (nginx) mapping port 80
+          docker run -d --name ttcs_frontend --restart unless-stopped -p 80:80 ttcs_frontend:latest
+
+          # Quick checks
+          docker images | egrep "ttcs_backend|ttcs_frontend" || true
+          docker ps --filter name=ttcs_ -a || true
           EOF
 
       - name: Cleanup local artifacts
