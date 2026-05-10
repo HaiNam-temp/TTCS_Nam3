@@ -8,8 +8,15 @@ import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { SearchPage } from "../pages/SearchPage";
 import { SettingsPage } from "../pages/SettingsPage";
+import { useAuth } from "../features/auth/AuthContext";
+import GlobalLoader from "../shared/components/GlobalLoader";
 
 export function App() {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return <GlobalLoader message="Đang kiểm tra phiên người dùng..." />;
+  }
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

@@ -4,13 +4,16 @@ import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./app/App";
 import { AuthProvider } from "./features/auth/AuthContext";
+import ApiLoadingProvider from "./shared/components/ApiLoadingProvider";
 import "./styles/global.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <ApiLoadingProvider>
+          <App />
+        </ApiLoadingProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

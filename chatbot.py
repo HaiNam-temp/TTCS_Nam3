@@ -8,6 +8,9 @@ logger = get_logger(__name__)
 
 def _map_ai_error_to_user_message(error: Exception) -> str:
     text = str(error or "").lower()
+    # common OpenAI region/permission errors
+    if "unsupported_country" in text or "unsupported_country_region_territory" in text:
+        return "Dịch vụ AI không hỗ trợ khu vực hoặc quốc gia của bạn. Vui lòng kiểm tra cấu hình tài khoản hoặc sử dụng key khác."
     if "openai_api_key" in text or "api key" in text or "invalid_api_key" in text:
         return "Khong the ket noi AI do API key khong hop le hoac chua duoc cau hinh."
     if "insufficient_quota" in text or "quota" in text:

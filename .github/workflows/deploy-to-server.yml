@@ -1,0 +1,130 @@
+name: Build and deploy Docker images to remote server
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend_group: ${{ steps.filter.outputs.backend_group }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend_group:
+              - 'backend/**'
+              - 'Crawl_Data/**'
+              - 'chatbot.py'
+              - 'create_chain_with_template.py'
+              - 'create_vector_database.py'
+              - 'recommend_system/**'
+
+  build-and-deploy:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.backend_group == 'true'
+    env:
+      REMOTE_HOST: 54.206.52.145
+      SSH_USER: ubuntu
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      DEPLOY_DIR: /home/ubuntu/deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tags
+        id: vars
+        run: |
+          echo "IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Build frontend image
+        if: needs.detect-changes.outputs.frontend == 'true'
+        run: |
+          docker build -f frontend/Dockerfile -t ttcs_frontend:${{ steps.vars.outputs.IMAGE_TAG }} frontend/
+          docker tag ttcs_frontend:${{ steps.vars.outputs.IMAGE_TAG }} ttcs_frontend:latest
+          docker save ttcs_frontend:latest -o frontend.tar
+
+      - name: Build backend image
+        if: needs.detect-changes.outputs.backend_group == 'true'
+        run: |
+          # Build from repository root so Dockerfile can access backend/ files
+          docker build -f backend/Dockerfile -t ttcs_backend:${{ steps.vars.outputs.IMAGE_TAG }} .
+          docker tag ttcs_backend:${{ steps.vars.outputs.IMAGE_TAG }} ttcs_backend:latest
+          docker save ttcs_backend:latest -o backend.tar
+
+      - name: Create docker-compose for remote
+        run: |
+          cat > docker-compose.yml <<'EOC'
+version: '3.8'
+services:
+  backend:
+    image: ttcs_backend:latest
+    network_mode: "host"
+    restart: always
+    environment:
+      - POSTGRES_HOST=localhost
+      - POSTGRES_PORT=5444
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=crawldata
+
+  frontend:
+    image: ttcs_frontend:latest
+    ports:
+      - "80:80"
+    restart: always
+EOC
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > private_key
+          chmod 600 private_key
+          ssh-keyscan -H "${{ env.REMOTE_HOST }}" >> ~/.ssh/known_hosts || true
+
+      - name: Ensure remote deploy dir exists
+        run: |
+          ssh -i private_key -o StrictHostKeyChecking=no ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }} "mkdir -p '${{ env.DEPLOY_DIR }}' && chown ${{ env.SSH_USER }}:${{ env.SSH_USER }} '${{ env.DEPLOY_DIR }}' || true"
+
+      - name: Copy artifacts to remote server
+        run: |
+          mkdir -p tmp_deploy
+          # copy files that exist
+          if [ -f frontend.tar ]; then scp -i private_key -o StrictHostKeyChecking=no frontend.tar ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/; fi
+          if [ -f backend.tar ]; then scp -i private_key -o StrictHostKeyChecking=no backend.tar ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/; fi
+          scp -i private_key -o StrictHostKeyChecking=no docker-compose.yml ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/
+
+      - name: Remote load images and deploy
+        run: |
+          ssh -i private_key -o StrictHostKeyChecking=no ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }} bash -s << 'EOF'
+          set -euo pipefail
+          mkdir -p $DEPLOY_DIR
+          cd $DEPLOY_DIR
+          if [ -f backend.tar ]; then docker load -i backend.tar || true; fi
+          if [ -f frontend.tar ]; then docker load -i frontend.tar || true; fi
+          # Start services using docker compose (v2) or docker-compose
+          if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose -f docker-compose.yml up -d --force-recreate
+          else
+            docker compose -f docker-compose.yml up -d --force-recreate
+          fi
+          EOF
+
+      - name: Cleanup local artifacts
+        run: |
+          rm -f frontend.tar backend.tar docker-compose.yml private_key || true
+
+      - name: Finished
+        run: echo "Deployed to $REMOTE_HOST"
+
+# Secrets required:
+# - SSH_KEY: private key content (use secret name `SSH_KEY`)

@@ -1,10 +1,9 @@
-name: Build and push Docker images to ECR
+name: Build and push Docker images to ECR (disabled for push/pull_request)
 
+# Disabled automatic triggers to prevent pushes to ECR.
+# This workflow can still be run manually from the Actions tab if needed.
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
