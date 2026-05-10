@@ -32,7 +32,7 @@ jobs:
   build-and-deploy:
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.backend_group == 'true'
+    if: ${{ needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.backend_group == 'true' }}
     env:
       REMOTE_HOST: 54.206.52.145
       SSH_USER: ubuntu
@@ -47,14 +47,14 @@ jobs:
           echo "IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Build frontend image
-        if: needs.detect-changes.outputs.frontend == 'true'
+        if: ${{ needs.detect-changes.outputs.frontend == 'true' }}
         run: |
           docker build -f frontend/Dockerfile -t ttcs_frontend:${{ steps.vars.outputs.IMAGE_TAG }} frontend/
           docker tag ttcs_frontend:${{ steps.vars.outputs.IMAGE_TAG }} ttcs_frontend:latest
           docker save ttcs_frontend:latest -o frontend.tar
 
       - name: Build backend image
-        if: needs.detect-changes.outputs.backend_group == 'true'
+        if: ${{ needs.detect-changes.outputs.backend_group == 'true' }}
         run: |
           # Build from repository root so Dockerfile can access backend/ files
           docker build -f backend/Dockerfile -t ttcs_backend:${{ steps.vars.outputs.IMAGE_TAG }} .
