@@ -76,15 +76,15 @@ async def startup_event():
     logger.info("FastAPI application started")
 
 # Register routers
-app.include_router(auth_routes.router, tags=["Authentication"])
-app.include_router(conversation_routes.router, tags=["Conversations"])
-app.include_router(admin_routes.router, tags=["Admin"])
-app.include_router(admin_batch_routes.router, tags=["Admin Batch"])
-app.include_router(product_routes.router, tags=["Products"])
+app.include_router(auth_routes.router, prefix="/api", tags=["Authentication"])
+app.include_router(conversation_routes.router, prefix="/api", tags=["Conversations"])
+app.include_router(admin_routes.router, prefix="/api", tags=["Admin"])
+app.include_router(admin_batch_routes.router, prefix="/api", tags=["Admin Batch"])
+app.include_router(product_routes.router, prefix="/api", tags=["Products"])
 
 
 # Root endpoint
-@app.get("/")
+@app.get("/api")
 async def root():
     """Root endpoint"""
     return {
@@ -94,7 +94,7 @@ async def root():
     }
 
 # Health check
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
     return {
@@ -103,8 +103,8 @@ async def health_check():
     }
 
 
-# Compatibility search endpoint used by the frontend (/search?q=...)
-@app.get("/search")
+# Compatibility search endpoint used by the frontend (/api/search?q=...)
+@app.get("/api/search")
 async def search_products(q: Optional[str] = None, limit: int = 50, offset: int = 0):
     """Simple proxy endpoint that returns products from the DB.
 

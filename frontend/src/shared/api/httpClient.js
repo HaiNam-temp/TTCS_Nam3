@@ -1,5 +1,12 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8010";
 
+function ensureApiPath(path) {
+  if (!path) return "/api";
+  if (path.startsWith("/api")) return path;
+  if (path.startsWith("/")) return "/api" + path;
+  return "/api/" + path;
+}
+
 function buildHeaders(token, contentType = "application/json") {
   const headers = {};
   if (contentType) {
@@ -12,7 +19,8 @@ function buildHeaders(token, contentType = "application/json") {
 }
 
 export async function request(path, { method = "GET", body, token, contentType = "application/json" } = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const apiPath = ensureApiPath(path);
+  const response = await fetch(`${API_BASE_URL}${apiPath}`, {
     method,
     headers: buildHeaders(token, contentType),
     body: body ? JSON.stringify(body) : undefined,
@@ -31,7 +39,8 @@ export async function request(path, { method = "GET", body, token, contentType =
 }
 
 export async function requestForm(path, { formData, token } = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const apiPath = ensureApiPath(path);
+  const response = await fetch(`${API_BASE_URL}${apiPath}`, {
     method: "POST",
     headers: buildHeaders(token, "application/x-www-form-urlencoded"),
     body: new URLSearchParams(formData),
