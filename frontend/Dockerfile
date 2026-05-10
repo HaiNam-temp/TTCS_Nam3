@@ -2,7 +2,7 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
  
-# Install dependencies (context is the `frontend/` folder) test cicdaaa
+# Install dependencies (context is the `frontend/` folder) test cicdaaaaa
 COPY package*.json ./
 RUN npm ci --silent
 

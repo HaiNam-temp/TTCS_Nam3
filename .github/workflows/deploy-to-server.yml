@@ -87,20 +87,20 @@ jobs:
       - name: Create nginx site config (local)
         run: |
           cat > hnam.conf <<'NGINX'
-server {
-    listen 80;
-    listen [::]:80;
+          server {
+            listen 80;
+            listen [::]:80;
 
-    server_name hnam.io.vn www.hnam.io.vn;
+            server_name hnam.io.vn www.hnam.io.vn;
 
-    root /usr/share/nginx/html;
-    index index.html;
+            root /usr/share/nginx/html;
+            index index.html;
 
-    location / {
-        try_files $uri $uri/ =404;
-    }
-}
-NGINX
+            location / {
+              try_files $uri $uri/ =404;
+            }
+          }
+          NGINX
 
       - name: Prepare SSH key
         run: |
