@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8010";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://price-comp-alb-2137356393.ap-southeast-2.elb.amazonaws.com";
 
 function ensureApiPath(path) {
   if (!path) return "/api";
