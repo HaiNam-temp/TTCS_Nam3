@@ -11,13 +11,14 @@ IN_DOCKER = os.getenv("IN_DOCKER") == "1" or Path("/.dockerenv").exists()
 
 # Docker/RDS defaults
 DOCKER_DEFAULTS = {
-	"POSTGRES_HOST": "postgres-pricecomp.c1euissievcs.ap-southeast-2.rds.amazonaws.com",
+	"POSTGRES_HOST": "172.31.23.94",
 	"POSTGRES_PORT": 5432,
 	"POSTGRES_USER": "postgres",
 	"POSTGRES_PASSWORD": "postgres123",
 	"POSTGRES_DB": "postgres",
-	"POSTGRES_SSLMODE": "verify-full",
-	"POSTGRES_SSLROOTCERT": "./global-bundle.pem",
+	# Disable SSL by default for this host
+	"POSTGRES_SSLMODE": None,
+	"POSTGRES_SSLROOTCERT": None,
 }
 
 LOCAL_DEFAULTS = {
