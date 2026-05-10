@@ -84,6 +84,24 @@ jobs:
               restart: always
           EOC
 
+      - name: Create nginx site config (local)
+        run: |
+          cat > hnam.conf <<'NGINX'
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name hnam.io.vn www.hnam.io.vn;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+NGINX
+
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
@@ -101,6 +119,7 @@ jobs:
           # copy files that exist
           if [ -f frontend.tar ]; then scp -i private_key -o StrictHostKeyChecking=no frontend.tar ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/; fi
           if [ -f backend.tar ]; then scp -i private_key -o StrictHostKeyChecking=no backend.tar ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/; fi
+          if [ -f hnam.conf ]; then scp -i private_key -o StrictHostKeyChecking=no hnam.conf ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/; fi
           scp -i private_key -o StrictHostKeyChecking=no docker-compose.yml ${{ env.SSH_USER }}@${{ env.REMOTE_HOST }}:${{ env.DEPLOY_DIR }}/
 
       - name: Remote load images and run containers
@@ -135,23 +154,6 @@ jobs:
           # Quick checks
           docker images | egrep "ttcs_backend|ttcs_frontend" || true
           docker ps --filter name=ttcs_ -a || true
-
-          # Create nginx site config for domain and copy into frontend container
-          cat > $DEPLOY_DIR/hnam.conf <<'NGINX'
-server {
-    listen 80;
-    listen [::]:80;
-
-    server_name hnam.io.vn www.hnam.io.vn;
-
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ =404;
-    }
-}
-NGINX
 
           if docker ps --format '{{.Names}}' | grep -q '^ttcs_frontend$'; then
             docker cp $DEPLOY_DIR/hnam.conf ttcs_frontend:/etc/nginx/conf.d/hnam.conf || true

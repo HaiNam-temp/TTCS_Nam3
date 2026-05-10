@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --silent
 
-# Copy source and build test aaa
+# Copy source and build test aaa aa
 COPY . ./
 RUN npm run build
 
